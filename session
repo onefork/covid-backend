@@ -1,0 +1,17 @@
+{
+    "__meta__": {
+        "about": "HTTPie session file",
+        "help": "https://httpie.org/doc#sessions",
+        "httpie": "2.0.0"
+    },
+    "auth": {
+        "password": null,
+        "type": null,
+        "username": null
+    },
+    "cookies": {},
+    "headers": {
+        "Account-ID": "bin",
+        "Authorization": "ZHANG"
+    }
+}

@@ -1,0 +1,11 @@
+autopep8==1.4.4
+certifi==2019.11.28
+chardet==3.0.4
+falcon==2.0.0
+gunicorn==20.0.4
+httpie==2.0.0
+idna==2.9
+pycodestyle==2.5.0
+Pygments==2.6.1
+requests==2.23.0
+urllib3==1.25.8
