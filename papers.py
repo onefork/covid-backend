@@ -28,6 +28,7 @@ from interactive_search import ask_question, COVID_BROWSER_INTRO
 from interactive_search import CORPUS_PATH
 from interactive_search import MODEL_PATH
 from interactive_search import EMBEDDINGS_PATH
+from interactive_search import cache_corpus
 
 
 os.system('cls' if os.name == 'nt' else 'clear')
@@ -44,6 +45,7 @@ model = SentenceTransformer(MODEL_PATH)
 for i in range(len(corpus)):
     corpus_abstract.append(corpus[i][0])
 
+print(EMBEDDINGS_PATH)
 if not os.path.exists(EMBEDDINGS_PATH):
     print("Computing and caching model embeddings for future use...")
     embeddings = model.encode(corpus_abstract, show_progress_bar=True)
@@ -76,6 +78,50 @@ def format_answers(results):
 
     return dict_result
 
+def format_answers1(results):
+    dict_result = []
+    for i in range(len(results)):
+        rank = results[i][0]
+        abstract = results[i][1]
+        score = results[i][2]
+        date = results[i][3]
+        language = results[i][4]
+        title = results[i][5]
+        url = results[i][6]
+        theme = results[i][7]
+        sub_theme = results[i][8]
+        u_id = results[i][9]
+
+        if type(url) == str:
+            new = {
+                'url': url,
+                'title': title,
+                'abstract': abstract,
+                'score': score,
+                'date': date,
+                'language': language,
+                'theme': theme,
+                'sub_topic': sub_theme,
+                'u_id': u_id
+            }
+        else: #url missing
+            new = {
+                'title': title,
+                'abstract': abstract,
+                'score': score,
+                'date': date,
+                'language': language,
+                'theme': theme,
+                'sub_topic': sub_theme,
+                'u_id': u_id
+            }
+
+        dict_result.append(new)
+
+        print(url)
+
+    return dict_result
+
 
 class StorageEngine(object):
 
@@ -83,7 +129,7 @@ class StorageEngine(object):
 
         # FIXME: filters for the search - the query shouly be a dict with the actual filters + the values from the filters
         filters = [None, None, None]
-        results = format_answers(ask_question(query, model, corpus, embeddings, filters, top_k = 5))
+        results = format_answers1(ask_question(query, model, corpus, embeddings, filters, top_k = 2000))
 
         return {'query': query, 'papers': results}
 

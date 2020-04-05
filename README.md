@@ -17,3 +17,16 @@ Test
 ```bash
 http --session-read-only=./session localhost:8000/papers q=="whats corona"
 ```
+
+
+# download data for browser:
+
+download the folder *models* from 
+https://drive.google.com/open?id=1cpPeaxlvNZ6p-2XyDk4p8IzeAVCt0k1p
+and place it inside the main folder.
+
+download the data from kaggle :
+https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge
+Place this as the data folder (in the main folder) and add the file 
+*metadata_codevscovid.csv* to the data folder: 
+https://drive.google.com/open?id=13FaD9-ugzBgysNnNwIhzgbl51sCrxxSi

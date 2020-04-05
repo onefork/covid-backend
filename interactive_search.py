@@ -34,7 +34,7 @@ relevant abstracts.\n
 BIORXIV_PATH = 'data/biorxiv_medrxiv/biorxiv_medrxiv/'
 COMM_USE_PATH = 'data/comm_use_subset/comm_use_subset/'
 NONCOMM_USE_PATH = 'data/noncomm_use_subset/noncomm_use_subset/'
-METADATA_PATH = 'data/metadata_new_new.csv'
+METADATA_PATH = 'data/metadata_codevscovid.csv'
 
 DATA_PATH = 'data'
 MODELS_PATH = 'models'
@@ -76,10 +76,17 @@ def cache_corpus(mode='CSV'):
     corpus = []
     if mode == 'CSV':
         df = pd.read_csv(METADATA_PATH)
-        test = df[['abstract', 'publish_time', 'language']]
-        for a, b, c in test.itertuples(index=False):
+        test = df[['abstract',
+                   'publish_time',
+                   'language',
+                   'title',
+                   'url',
+                   'main_topic',
+                   'main_subtopic',
+                   'cord_uid']]
+        for a, b, c, d, e, f, g, h in test.itertuples(index=False):
             if type(a) == str and a != "Unknown":
-                corpus.append([a, b, c])
+                corpus.append([a, b, c, d, e, f, g, h])
         print('Corpus size', len(corpus))
     elif mode == 'JSON': #FIXME this seems to be old and not used anymore
         biorxiv_files = load_json_files(BIORXIV_PATH)
@@ -126,10 +133,17 @@ def ask_question(query, model, corpus, corpus_embed, filters, top_k=5):
             #TODO check the filters
             date = corpus[idx][1]
             lang = corpus[idx][2]
+            title  = corpus[idx][3]
+            url  = corpus[idx][4]
+            theme  = corpus[idx][5]
+            sub_theme = corpus[idx][6]
+            cord_uid = corpus[idx][7]
+
+
             if check_constraints(filters, date, lang):
                 j += 1
                 results.append([count + 1, corpus[idx][0].strip(), round(1 - distance, 4),
-                                date, lang ])
+                                date, lang, title, url, theme, sub_theme, cord_uid ])
             if j >= top_k:
                 break
     return results
