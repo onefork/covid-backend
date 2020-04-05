@@ -9,3 +9,10 @@ pycodestyle==2.5.0
 Pygments==2.6.1
 requests==2.23.0
 urllib3==1.25.8
+transformers==2.3.0
+sentence-transformers
+torch
+tqdm
+scipy
+numpy
+prettytable
