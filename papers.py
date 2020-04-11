@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+from interactive_search import cache_corpus
+from interactive_search import EMBEDDINGS_PATH
+from interactive_search import MODEL_PATH
+from interactive_search import CORPUS_PATH
+from interactive_search import ask_question, COVID_BROWSER_INTRO
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import scipy
+import pandas as pd
 import json
 import logging
 import uuid
@@ -17,18 +26,6 @@ import logging
 import pickle
 import warnings
 warnings.simplefilter('ignore')
-
-import pandas as pd
-import scipy
-from sentence_transformers import SentenceTransformer
-import numpy as np
-
-
-from interactive_search import ask_question, COVID_BROWSER_INTRO
-from interactive_search import CORPUS_PATH
-from interactive_search import MODEL_PATH
-from interactive_search import EMBEDDINGS_PATH
-from interactive_search import cache_corpus
 
 
 os.system('cls' if os.name == 'nt' else 'clear')
@@ -70,13 +67,14 @@ def format_answers(results):
 
         dict_result[str(rank)] = []
         dict_result[str(rank)] = {
-            'abstract' : abstract,
-            'score' : score,
+            'abstract': abstract,
+            'score': score,
             'date': date,
             'language': language
         }
 
     return dict_result
+
 
 def format_answers1(results):
     dict_result = []
@@ -104,7 +102,7 @@ def format_answers1(results):
                 'sub_topic': sub_theme,
                 'u_id': u_id
             }
-        else: #url missing
+        else:  # url missing
             new = {
                 'title': title,
                 'abstract': abstract,
@@ -129,7 +127,8 @@ class StorageEngine(object):
 
         # FIXME: filters for the search - the query shouly be a dict with the actual filters + the values from the filters
         filters = [None, None, None]
-        results = format_answers1(ask_question(query, model, corpus, embeddings, filters, top_k = 2000))
+        results = format_answers1(ask_question(
+            query, model, corpus, embeddings, filters, top_k=2000))
 
         return {'query': query, 'papers': results}
 
@@ -271,9 +270,9 @@ class CORSComponent(object):
         resp.set_header('Access-Control-Allow-Origin', '*')
 
         if (req_succeeded
-                and req.method == 'OPTIONS'
-                and req.get_header('Access-Control-Request-Method')
-                ):
+            and req.method == 'OPTIONS'
+            and req.get_header('Access-Control-Request-Method')
+            ):
             # NOTE(kgriffs): This is a CORS preflight request. Patch the
             #   response accordingly.
 

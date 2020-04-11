@@ -1,3 +1,7 @@
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import scipy
+import pandas as pd
 import os
 import tqdm
 import textwrap
@@ -8,10 +12,6 @@ import pickle
 import warnings
 warnings.simplefilter('ignore')
 
-import pandas as pd
-import scipy
-from sentence_transformers import SentenceTransformer
-import numpy as np
 
 COVID_BROWSER_ASCII = """
 ================================================================================
@@ -45,7 +45,8 @@ EMBEDDINGS_PATH = os.path.join(DATA_PATH, f'{MODEL_NAME}-embeddings.pkl')
 
 
 def load_json_files(dirname):
-    filenames = [file for file in os.listdir(dirname) if file.endswith('.json')]
+    filenames = [file for file in os.listdir(
+        dirname) if file.endswith('.json')]
     raw_files = []
 
     for filename in tqdm(filenames):
@@ -88,18 +89,21 @@ def cache_corpus(mode='CSV'):
             if type(a) == str and a != "Unknown":
                 corpus.append([a, b, c, d, e, f, g, h])
         print('Corpus size', len(corpus))
-    elif mode == 'JSON': #FIXME this seems to be old and not used anymore
+    elif mode == 'JSON':  # FIXME this seems to be old and not used anymore
         biorxiv_files = load_json_files(BIORXIV_PATH)
         comm_use_files = load_json_files(COMM_USE_PATH)
         noncomm_use_files = load_json_files(NONCOMM_USE_PATH)
-        corpus = create_corpus_from_json(biorxiv_files + comm_use_files + noncomm_use_files)
+        corpus = create_corpus_from_json(
+            biorxiv_files + comm_use_files + noncomm_use_files)
     else:
         raise AttributeError('Mode should be either CSV or JSON')
     with open(CORPUS_PATH, 'wb') as file:
         pickle.dump(corpus, file)
     return corpus
 
-#return true if search filters are satisified
+# return true if search filters are satisified
+
+
 def check_constraints(filters, date, lang):
     valid = True
     [date_filter_min, date_filter_max, language_filter] = filters
@@ -124,26 +128,26 @@ def ask_question(query, model, corpus, corpus_embed, filters, top_k=5):
     queries = [query]
     query_embeds = model.encode(queries, show_progress_bar=False)
     for query, query_embed in zip(queries, query_embeds):
-        distances = scipy.spatial.distance.cdist([query_embed], corpus_embed, "cosine")[0]
+        distances = scipy.spatial.distance.cdist(
+            [query_embed], corpus_embed, "cosine")[0]
         distances = zip(range(len(distances)), distances)
         distances = sorted(distances, key=lambda x: x[1])
         results = []
         j = 0
         for count, (idx, distance) in enumerate(distances):
-            #TODO check the filters
+            # TODO check the filters
             date = corpus[idx][1]
             lang = corpus[idx][2]
-            title  = corpus[idx][3]
-            url  = corpus[idx][4]
-            theme  = corpus[idx][5]
+            title = corpus[idx][3]
+            url = corpus[idx][4]
+            theme = corpus[idx][5]
             sub_theme = corpus[idx][6]
             cord_uid = corpus[idx][7]
-
 
             if check_constraints(filters, date, lang):
                 j += 1
                 results.append([count + 1, corpus[idx][0].strip(), round(1 - distance, 4),
-                                date, lang, title, url, theme, sub_theme, cord_uid ])
+                                date, lang, title, url, theme, sub_theme, cord_uid])
             if j >= top_k:
                 break
     return results
@@ -173,7 +177,7 @@ def show_answers(results):
     print('\n')
 
 
-#save the answers into a json
+# save the answers into a json
 def save_answers(results):
     dict_result = {}
     for i in range(len(results)):
@@ -185,20 +189,18 @@ def save_answers(results):
 
         dict_result[str(rank)] = []
         dict_result[str(rank)] = {
-            'abstract' : abstract,
-            'score' : score,
+            'abstract': abstract,
+            'score': score,
             'date': date,
             'language': language
         }
 
     with open('results.json', 'w') as outfile:
         json.dump(dict_result, outfile, ensure_ascii=False, indent=4)
+    # check dates selected by user are valid
 
 
-
-
-    #check dates selected by user are valid
-def verify_date(date_str, earliest = None):
+def verify_date(date_str, earliest=None):
     verification = True
 
     if date_str:
@@ -215,7 +217,8 @@ def verify_date(date_str, earliest = None):
             verification = False
         if earliest is not None:
             if date_int < earliest:
-                print('This date must be bigger than', earliest, '. Please re-enter')
+                print('This date must be bigger than',
+                      earliest, '. Please re-enter')
                 verification = False
     else:
         date_int = None
@@ -224,7 +227,7 @@ def verify_date(date_str, earliest = None):
     return verification, date_int
 
 
-#check languages selected by user are valid
+# check languages selected by user are valid
 def verify_language(language):
     verification = True
 
@@ -276,15 +279,17 @@ if __name__ == '__main__':
         verified = False
         while not verified:
             date_filter_max = input('\nLatest year (i.e. 2020 or None): ')
-            verified, date_filter_max = verify_date(date_filter_max, date_filter_min)
+            verified, date_filter_max = verify_date(
+                date_filter_max, date_filter_min)
 
         verified = False
         while not verified:
-            language_filter = input('\nLanguage (i.e. de, en, es, fr, it, ja, pt, zh or None): ')
+            language_filter = input(
+                '\nLanguage (i.e. de, en, es, fr, it, ja, pt, zh or None): ')
             verified, language_filter = verify_language(language_filter)
 
         filters = [date_filter_min, date_filter_max, language_filter]
         results = ask_question(query, model, corpus, embeddings, filters)
 
-        #save_answers(results)
+        # save_answers(results)
         show_answers(results)
