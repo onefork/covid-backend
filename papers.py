@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import json
 import logging
 import uuid
@@ -11,116 +12,131 @@ import os
 import pickle
 
 from sentence_transformers import SentenceTransformer
+import scipy
 
-from interactive_search import ask_question
-from interactive_search import CORPUS_PATH
-from interactive_search import MODEL_PATH
-from interactive_search import EMBEDDINGS_PATH
-from interactive_search import cache_corpus
+RETURN_DEFAULT = 500
+RETURN_LIMIT = 2000
 
-
-os.system('cls' if os.name == 'nt' else 'clear')
-if not os.path.exists(CORPUS_PATH):
-    print("Caching the corpus for future use...")
-    corpus = cache_corpus()
-else:
-    print("Loading the corpus from", CORPUS_PATH, '...')
-    with open(CORPUS_PATH, 'rb') as corpus_pt:
-        corpus = pickle.load(corpus_pt)
-
-corpus_abstract = []
-model = SentenceTransformer(MODEL_PATH)
-for i in range(len(corpus)):
-    corpus_abstract.append(corpus[i][0])
-
-if not os.path.exists(EMBEDDINGS_PATH):
-    print("Computing and caching model embeddings for future use...")
-    embeddings = model.encode(corpus_abstract, show_progress_bar=True)
-    with open(EMBEDDINGS_PATH, 'wb') as file:
-        pickle.dump(embeddings, file)
-else:
-    print("Loading model embeddings from", EMBEDDINGS_PATH, '...')
-    with open(EMBEDDINGS_PATH, 'rb') as file:
-        embeddings = pickle.load(file)
-    print('done')
+DATA_PATH = 'data'
+MODELS_PATH = 'models'
+MODEL_NAME = 'scibert-nli'
+CORPUS_PATH = os.path.join(DATA_PATH, 'corpus.pkl')
+MODEL_PATH = os.path.join(MODELS_PATH, MODEL_NAME)
+EMBEDDINGS_PATH = os.path.join(DATA_PATH, f'{MODEL_NAME}-embeddings.pkl')
 
 
-# transform the search result to a dict with the right format
-def format_answers(results):
-    dict_result = {}
-    for i in range(len(results)):
-        rank = results[i][0]
-        abstract = results[i][1]
-        score = results[i][2]
-        date = results[i][3]
-        language = results[i][4]
+class AnswerEngine(object):
+    def __init__(self, corpus_path, model_path, embeds_path):
+        print(f'Load corpus from "{corpus_path}"...')
+        if not os.path.exists(corpus_path):
+            raise AnswerError(f'Can\'t find corpus.')
+        with open(corpus_path, 'rb') as f:
+            self.corpus = pickle.load(f)
+        item0_cord_uuid = self.corpus[0][7]
+        if not AnswerEngine.is_cord_uid(item0_cord_uuid):
+            raise AnswerError('Wrong corpus or corrupted data.')
 
-        dict_result[str(rank)] = []
-        dict_result[str(rank)] = {
-            'abstract': abstract,
-            'score': score,
-            'date': date,
-            'language': language
+        print(f'Load model from "{model_path}"...')
+        if not os.path.exists(model_path):
+            raise AnswerError(f'Can\'t find model.')
+        self.model = SentenceTransformer(model_path)
+
+        print(f'Load embeddings from "{embeds_path}"...')
+        if not os.path.exists(embeds_path):
+            raise AnswerError(f'Can\'t find embeddings.')
+        with open(embeds_path, 'rb') as f:
+            self.embeds = pickle.load(f)
+
+        print('Answer engine initialized.')
+
+    def ask_question(self, query, filters={}, top_k=RETURN_DEFAULT):
+        queries = [query]  # only one query at the moment
+        query_embeds = self.model.encode(queries, show_progress_bar=False)
+        results = []
+        count = 0
+        for query, query_embed in zip(queries, query_embeds):
+            distances = scipy.spatial.distance.cdist(
+                [query_embed], self.embeds, "cosine")[0]
+            distances = zip(range(len(distances)), distances)
+            distances = sorted(distances, key=lambda x: x[1])
+            for idx, distance in distances:
+                item_raw = self.corpus[idx]
+                if not AnswerEngine.is_cord_uid(item_raw[7]):
+                    # skip invalid item
+                    continue
+                item = dict(
+                    cord_uid=item_raw[7],
+                    title=item_raw[3],
+                    abstract=item_raw[0],
+                    date=item_raw[1],
+                    # random.choice(['en','zh','fr','de','es','it','pt','ja']),
+                    lang=item_raw[2],
+                    url=item_raw[4],
+                    theme=item_raw[5],
+                    sub_theme=item_raw[6],
+                )
+                if self.check_constraints(item, filters):
+                    count += 1
+                    results.append({
+                        'score': round((1 - distance)*10, 3),  # 0.000 - 10.000
+                        **item
+                    })
+                if count >= top_k:
+                    break
+        return results
+
+    def check_constraints(self, data, filters):
+        for key in data.keys() & filters.keys():
+            if not filters[key](data[key]):
+                return False
+        return True
+
+    def format_results(self, results):
+        papers = []
+        langs = {}
+        for item in results:
+            papers.append({
+                'cord_uid': item['cord_uid'],
+                'score': item['score'],
+                ** ({'title': item['title']} if not AnswerEngine.is_null(item['title']) else {}),
+                # strip abstract
+                ** ({'abstract': item['abstract'].strip()} if not AnswerEngine.is_null(item['abstract']) else {}),
+                ** ({'date': item['date']} if not AnswerEngine.is_null(item['date']) else {}),
+                ** ({'lang': item['lang']} if not AnswerEngine.is_null(item['lang']) else {}),
+                ** ({'url': item['url']} if not AnswerEngine.is_null(item['url']) else {}),
+                ** ({'theme': item['theme']} if not AnswerEngine.is_null(item['theme']) else {}),
+                ** ({'sub_theme': item['sub_theme']} if not AnswerEngine.is_null(item['sub_theme']) else {}),
+            })
+            if item['lang'] in langs:
+                langs[item['lang']] += 1
+            else:
+                langs[item['lang']] = 1
+        return {
+            'langs': langs,
+            'papers': papers,
         }
 
-    return dict_result
+    @staticmethod
+    def is_cord_uid(uid):
+        return type(uid) is str and len(uid) == 8
+
+    @staticmethod
+    def is_null(data):
+        return data == None or data != data
 
 
-def format_answers1(results):
-    dict_result = []
-    for i in range(len(results)):
-        rank = results[i][0]
-        abstract = results[i][1]
-        score = results[i][2]
-        date = results[i][3]
-        language = results[i][4]
-        title = results[i][5]
-        url = results[i][6]
-        theme = results[i][7]
-        sub_theme = results[i][8]
-        u_id = results[i][9]
+class AnswerError(Exception):
 
-        if type(url) == str:
-            new = {
-                'url': url,
-                'title': title,
-                'abstract': abstract,
-                'score': score,
-                'date': date,
-                'language': language,
-                'theme': theme,
-                'sub_topic': sub_theme,
-                'u_id': u_id
-            }
-        else:  # url missing
-            new = {
-                'title': title,
-                'abstract': abstract,
-                'score': score,
-                'date': date,
-                'language': language,
-                'theme': theme,
-                'sub_topic': sub_theme,
-                'u_id': u_id
-            }
-
-        dict_result.append(new)
-
-        print(url)
-
-    return dict_result
+    @staticmethod
+    def handle(ex, req, resp, params):
+        description = format(ex)
+        # :) https://github.com/joho/7XX-rfc
+        raise falcon.HTTPError(falcon.HTTP_725,
+                               'Answer Engine Error',
+                               description)
 
 
 class StorageEngine(object):
-
-    def get_papers(self, query, limit):
-
-        # FIXME: filters for the search - the query shouly be a dict with the actual filters + the values from the filters
-        filters = [None, None, None]
-        results = format_answers1(ask_question(
-            query, model, corpus, embeddings, filters, top_k=2000))
-
-        return {'query': query, 'papers': results}
 
     def get_things(self, marker, limit):
         return [{'id': str(uuid.uuid4()), 'color': 'green'}]
@@ -260,9 +276,9 @@ class CORSComponent(object):
         resp.set_header('Access-Control-Allow-Origin', '*')
 
         if (req_succeeded
-                and req.method == 'OPTIONS'
-                and req.get_header('Access-Control-Request-Method')
-                ):
+            and req.method == 'OPTIONS'
+            and req.get_header('Access-Control-Request-Method')
+            ):
             # NOTE(kgriffs): This is a CORS preflight request. Patch the
             #   response accordingly.
 
@@ -340,10 +356,22 @@ class PapersResource(object):
 
     def on_get(self, req, resp):
         query = req.get_param('q') or ''
-        limit = req.get_param_as_int('limit') or 50
+        limit = req.get_param_as_int('limit') or RETURN_DEFAULT
+        if limit > RETURN_LIMIT:
+            limit = RETURN_LIMIT
+
+        # TODO: implement filters
+        filters = {
+            # 'lang': lambda lang: lang == 'en'
+        }
 
         try:
-            result = self.db.get_papers(query, limit)
+            result = {
+                'query': query,
+                ** self.db.format_results(
+                    self.db.ask_question(query, filters, limit)
+                ),
+            }
         except Exception as ex:
             self.logger.error(ex)
 
@@ -379,13 +407,14 @@ app = falcon.API(middleware=[
     JSONTranslator(),
 ])
 
-db = StorageEngine()
-
-# things = ThingsResource(db)
-# app.add_route('/{user_id}/things', things)
-
+db = AnswerEngine(CORPUS_PATH, MODEL_PATH, EMBEDDINGS_PATH)
 papers = PapersResource(db)
 app.add_route('/papers', papers)
+app.add_error_handler(AnswerError, AnswerError.handle)
+
+# db = StorageEngine()
+# things = ThingsResource(db)
+# app.add_route('/{user_id}/things', things)
 
 # If a responder ever raised an instance of StorageError, pass control to
 # the given handler.
@@ -403,5 +432,6 @@ app.add_route('/papers', papers)
 # with pdb.
 
 if __name__ == '__main__':
+    print('Serving at', '127.0.0.1', ':', 8000)
     httpd = simple_server.make_server('127.0.0.1', 8000, app)
     httpd.serve_forever()
