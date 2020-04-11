@@ -1,14 +1,4 @@
 #!/usr/bin/env python
-
-from interactive_search import cache_corpus
-from interactive_search import EMBEDDINGS_PATH
-from interactive_search import MODEL_PATH
-from interactive_search import CORPUS_PATH
-from interactive_search import ask_question, COVID_BROWSER_INTRO
-import numpy as np
-from sentence_transformers import SentenceTransformer
-import scipy
-import pandas as pd
 import json
 import logging
 import uuid
@@ -18,14 +8,15 @@ import falcon
 import requests
 
 import os
-import tqdm
-import textwrap
-import json
-import prettytable
-import logging
 import pickle
-import warnings
-warnings.simplefilter('ignore')
+
+from sentence_transformers import SentenceTransformer
+
+from interactive_search import ask_question
+from interactive_search import CORPUS_PATH
+from interactive_search import MODEL_PATH
+from interactive_search import EMBEDDINGS_PATH
+from interactive_search import cache_corpus
 
 
 os.system('cls' if os.name == 'nt' else 'clear')
@@ -42,7 +33,6 @@ model = SentenceTransformer(MODEL_PATH)
 for i in range(len(corpus)):
     corpus_abstract.append(corpus[i][0])
 
-print(EMBEDDINGS_PATH)
 if not os.path.exists(EMBEDDINGS_PATH):
     print("Computing and caching model embeddings for future use...")
     embeddings = model.encode(corpus_abstract, show_progress_bar=True)
@@ -270,9 +260,9 @@ class CORSComponent(object):
         resp.set_header('Access-Control-Allow-Origin', '*')
 
         if (req_succeeded
-            and req.method == 'OPTIONS'
-            and req.get_header('Access-Control-Request-Method')
-            ):
+                and req.method == 'OPTIONS'
+                and req.get_header('Access-Control-Request-Method')
+                ):
             # NOTE(kgriffs): This is a CORS preflight request. Patch the
             #   response accordingly.
 
