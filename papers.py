@@ -30,6 +30,7 @@ UID_LEN = 8
 
 
 class AnswerEngine(object):
+
     def __init__(self, corpus_path, model_path, embeds_path):
         print(f'Load corpus from "{corpus_path}"...')
         if not os.path.exists(corpus_path):
@@ -162,6 +163,16 @@ class AnswerError(Exception):
 #                                description)
 
 
+class HealthSink(object):
+
+    def __call__(self, req, resp):
+
+        resp.content_type = 'text/plain'
+        resp.body = 'Papers-19'
+        resp.set_header('Powered-By', 'Papers')
+        resp.status = falcon.HTTP_200
+
+
 # class SinkAdapter(object):
 
 #     engines = {
@@ -183,7 +194,10 @@ class AuthMiddleware(object):
 
     def process_request(self, req, resp):
 
-        if req.method != 'OPTIONS':
+        if not (
+            req.method == 'OPTIONS'
+            or req.path == '/health' or req.path.startswith('/health/')
+        ):
             token = req.get_header('Authorization')
             account_id = req.get_header('Account-ID')
 
@@ -280,9 +294,9 @@ class CORSComponent(object):
         resp.set_header('Access-Control-Allow-Origin', '*')
 
         if (req_succeeded
-            and req.method == 'OPTIONS'
-            and req.get_header('Access-Control-Request-Method')
-            ):
+                and req.method == 'OPTIONS'
+                and req.get_header('Access-Control-Request-Method')
+                ):
             # NOTE(kgriffs): This is a CORS preflight request. Patch the
             #   response accordingly.
 
@@ -415,6 +429,8 @@ db = AnswerEngine(CORPUS_PATH, MODEL_PATH, EMBEDDINGS_PATH)
 papers = PapersResource(db)
 app.add_route('/papers', papers)
 app.add_error_handler(AnswerError, AnswerError.handle)
+health = HealthSink()
+app.add_sink(health, r'/health(?:/.*)?\Z')
 
 # db = StorageEngine()
 # things = ThingsResource(db)
