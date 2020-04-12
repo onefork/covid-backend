@@ -138,43 +138,43 @@ class AnswerError(Exception):
                                description)
 
 
-class StorageEngine(object):
+# class StorageEngine(object):
 
-    def get_things(self, marker, limit):
-        return [{'id': str(uuid.uuid4()), 'color': 'green'}]
+#     def get_things(self, marker, limit):
+#         return [{'id': str(uuid.uuid4()), 'color': 'green'}]
 
-    def add_thing(self, thing):
-        thing['id'] = str(uuid.uuid4())
-        return thing
-
-
-class StorageError(Exception):
-
-    @staticmethod
-    def handle(ex, req, resp, params):
-        description = ('Sorry, couldn\'t write your thing to the '
-                       'database. It worked on my box.')
-
-        raise falcon.HTTPError(falcon.HTTP_725,
-                               'Database Error',
-                               description)
+#     def add_thing(self, thing):
+#         thing['id'] = str(uuid.uuid4())
+#         return thing
 
 
-class SinkAdapter(object):
+# class StorageError(Exception):
 
-    engines = {
-        'ddg': 'https://duckduckgo.com',
-        'y': 'https://search.yahoo.com/search',
-    }
+#     @staticmethod
+#     def handle(ex, req, resp, params):
+#         description = ('Sorry, couldn\'t write your thing to the '
+#                        'database. It worked on my box.')
 
-    def __call__(self, req, resp, engine):
-        url = self.engines[engine]
-        params = {'q': req.get_param('q', True)}
-        result = requests.get(url, params=params)
+#         raise falcon.HTTPError(falcon.HTTP_725,
+#                                'Database Error',
+#                                description)
 
-        resp.status = str(result.status_code) + ' ' + result.reason
-        resp.content_type = result.headers['content-type']
-        resp.body = result.text
+
+# class SinkAdapter(object):
+
+#     engines = {
+#         'ddg': 'https://duckduckgo.com',
+#         'y': 'https://search.yahoo.com/search',
+#     }
+
+#     def __call__(self, req, resp, engine):
+#         url = self.engines[engine]
+#         params = {'q': req.get_param('q', True)}
+#         result = requests.get(url, params=params)
+
+#         resp.status = str(result.status_code) + ' ' + result.reason
+#         resp.content_type = result.headers['content-type']
+#         resp.body = result.text
 
 
 class AuthMiddleware(object):
@@ -299,55 +299,55 @@ class CORSComponent(object):
             ))
 
 
-class ThingsResource(object):
+# class ThingsResource(object):
 
-    def __init__(self, db):
-        self.db = db
-        self.logger = logging.getLogger('thingsapp.' + __name__)
+#     def __init__(self, db):
+#         self.db = db
+#         self.logger = logging.getLogger('thingsapp.' + __name__)
 
-    def on_get(self, req, resp, user_id):
-        marker = req.get_param('marker') or ''
-        limit = req.get_param_as_int('limit') or 50
+#     def on_get(self, req, resp, user_id):
+#         marker = req.get_param('marker') or ''
+#         limit = req.get_param_as_int('limit') or 50
 
-        try:
-            result = self.db.get_things(marker, limit)
-        except Exception as ex:
-            self.logger.error(ex)
+#         try:
+#             result = self.db.get_things(marker, limit)
+#         except Exception as ex:
+#             self.logger.error(ex)
 
-            description = ('Aliens have attacked our base! We will '
-                           'be back as soon as we fight them off. '
-                           'We appreciate your patience.')
+#             description = ('Aliens have attacked our base! We will '
+#                            'be back as soon as we fight them off. '
+#                            'We appreciate your patience.')
 
-            raise falcon.HTTPServiceUnavailable(
-                'Service Outage',
-                description,
-                30)
+#             raise falcon.HTTPServiceUnavailable(
+#                 'Service Outage',
+#                 description,
+#                 30)
 
-        # An alternative way of doing DRY serialization would be to
-        # create a custom class that inherits from falcon.Request. This
-        # class could, for example, have an additional 'doc' property
-        # that would serialize to JSON under the covers.
-        #
-        # NOTE: Starting with Falcon 1.3, you can simply
-        # use resp.media for this instead.
-        resp.context.result = result
+#         # An alternative way of doing DRY serialization would be to
+#         # create a custom class that inherits from falcon.Request. This
+#         # class could, for example, have an additional 'doc' property
+#         # that would serialize to JSON under the covers.
+#         #
+#         # NOTE: Starting with Falcon 1.3, you can simply
+#         # use resp.media for this instead.
+#         resp.context.result = result
 
-        resp.set_header('Powered-By', 'Falcon')
-        resp.status = falcon.HTTP_200
+#         resp.set_header('Powered-By', 'Falcon')
+#         resp.status = falcon.HTTP_200
 
-    @falcon.before(max_body(64 * 1024))
-    def on_post(self, req, resp, user_id):
-        try:
-            doc = req.context.doc
-        except AttributeError:
-            raise falcon.HTTPBadRequest(
-                'Missing thing',
-                'A thing must be submitted in the request body.')
+#     @falcon.before(max_body(64 * 1024))
+#     def on_post(self, req, resp, user_id):
+#         try:
+#             doc = req.context.doc
+#         except AttributeError:
+#             raise falcon.HTTPBadRequest(
+#                 'Missing thing',
+#                 'A thing must be submitted in the request body.')
 
-        proper_thing = self.db.add_thing(doc)
+#         proper_thing = self.db.add_thing(doc)
 
-        resp.status = falcon.HTTP_201
-        resp.location = '/%s/things/%s' % (user_id, proper_thing['id'])
+#         resp.status = falcon.HTTP_201
+#         resp.location = '/%s/things/%s' % (user_id, proper_thing['id'])
 
 
 class PapersResource(object):
