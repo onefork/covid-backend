@@ -26,6 +26,8 @@ CORPUS_PATH = os.path.join(DATA_PATH, 'corpus.pkl')
 MODEL_PATH = os.path.join(MODELS_PATH, MODEL_NAME)
 EMBEDDINGS_PATH = os.path.join(DATA_PATH, f'{MODEL_NAME}-embeddings.pkl')
 
+UID_LEN = 8
+
 
 class AnswerEngine(object):
     def __init__(self, corpus_path, model_path, embeds_path):
@@ -120,7 +122,7 @@ class AnswerEngine(object):
 
     @staticmethod
     def is_cord_uid(uid):
-        return type(uid) is str and len(uid) == 8
+        return type(uid) is str and len(uid) == UID_LEN
 
     @staticmethod
     def is_null(data):
