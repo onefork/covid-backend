@@ -18,6 +18,11 @@ Test
 http --session-read-only=./session localhost:8000/papers q=="whats corona"
 ```
 
+Download model
+
+```bash
+python download_model.py --model scibert-nli
+```
 
 # download data for browser:
 
