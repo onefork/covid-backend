@@ -14,6 +14,8 @@ import pickle
 from sentence_transformers import SentenceTransformer
 import scipy
 
+HOST = '0.0.0.0'
+PORT = 8000
 RETURN_DEFAULT = 500
 RETURN_LIMIT = 2000
 
@@ -432,6 +434,6 @@ app.add_error_handler(AnswerError, AnswerError.handle)
 # with pdb.
 
 if __name__ == '__main__':
-    print('Serving at', '127.0.0.1', ':', 8000)
-    httpd = simple_server.make_server('127.0.0.1', 8000, app)
+    print(f'Serving at {HOST}:{PORT}')
+    httpd = simple_server.make_server(HOST, PORT, app)
     httpd.serve_forever()
